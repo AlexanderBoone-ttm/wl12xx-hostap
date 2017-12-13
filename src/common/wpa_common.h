@@ -177,8 +177,13 @@ struct wpa_ptk {
 			u8 rx_mic_key[8];
 		} auth;
 	} u;
+	int installed; /* 1 if key has already been installed to driver */
 } STRUCT_PACKED;
 
+struct wpa_gtk {
+	u8 gtk[WPA_GTK_MAX_LEN];
+	size_t gtk_len;
+};
 
 /* WPA IE version 1
  * 00-50-f2:1 (OUI:OUI type)

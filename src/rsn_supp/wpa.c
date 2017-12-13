@@ -511,6 +511,12 @@ static int wpa_supplicant_install_ptk(struct wpa_sm *sm,
 	const u8 *key_rsc;
 	u8 null_rsc[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
+	if (sm->ptk.installed) {
+//		wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG,
+//			"WPA: Do not re-install same PTK to the driver");
+		return 0;
+	}
+	
 	wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG,
 		"WPA: Installing PTK to the driver");
 
@@ -552,6 +558,8 @@ static int wpa_supplicant_install_ptk(struct wpa_sm *sm,
 		return -1;
 	}
 
+	sm->ptk.installed = 1;
+	
 	if (sm->wpa_ptk_rekey) {
 		eloop_cancel_timeout(wpa_sm_rekey_ptk, sm, NULL);
 		eloop_register_timeout(sm->wpa_ptk_rekey, 0, wpa_sm_rekey_ptk,
@@ -634,6 +642,15 @@ static int wpa_supplicant_install_gtk(struct wpa_sm *sm,
 {
 	const u8 *_gtk = gd->gtk;
 	u8 gtk_buf[32];
+	
+	/* Detect possible key reinstallation */
+	if (sm->gtk.gtk_len == (size_t) gd->gtk_len &&
+	    os_memcmp(sm->gtk.gtk, gd->gtk, sm->gtk.gtk_len) == 0) {
+//		wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG,
+//			"WPA: Not reinstalling already in-use GTK to the driver (keyidx=%d tx=%d len=%d)",
+//			gd->keyidx, gd->tx, gd->gtk_len);
+		return 0;
+	}
 
 	wpa_hexdump_key(MSG_DEBUG, "WPA: Group Key", gd->gtk, gd->gtk_len);
 	wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG,
@@ -665,6 +682,9 @@ static int wpa_supplicant_install_gtk(struct wpa_sm *sm,
 			gd->alg, gd->gtk_len, gd->keyidx);
 		return -1;
 	}
+	
+	sm->gtk.gtk_len = gd->gtk_len;
+	os_memcpy(sm->gtk.gtk, gd->gtk, sm->gtk.gtk_len);
 
 	return 0;
 }
@@ -2132,6 +2152,8 @@ void wpa_sm_notify_assoc(struct wpa_sm *sm, const u8 *bssid)
 		wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG, "WPA: Clear old PTK");
 		sm->ptk_set = 0;
 		sm->tptk_set = 0;
+		os_memset(&sm->ptk, 0, sizeof(sm->ptk));
+        os_memset(&sm->gtk, 0, sizeof(sm->gtk));
 	}
 
 #ifdef CONFIG_TDLS
@@ -2636,6 +2658,7 @@ void wpa_sm_drop_sa(struct wpa_sm *sm)
 	os_memset(sm->pmk, 0, sizeof(sm->pmk));
 	os_memset(&sm->ptk, 0, sizeof(sm->ptk));
 	os_memset(&sm->tptk, 0, sizeof(sm->tptk));
+	os_memset(&sm->gtk, 0, sizeof(sm->gtk));
 }
 
 

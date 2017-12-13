@@ -30,6 +30,7 @@ struct wpa_sm {
 	int rx_replay_counter_set;
 	u8 request_counter[WPA_REPLAY_COUNTER_LEN];
 
+	struct wpa_gtk gtk;
 	struct eapol_sm *eapol; /* EAPOL state machine from upper level code */
 
 	struct rsn_pmksa_cache *pmksa; /* PMKSA cache */
